@@ -542,7 +542,7 @@
           決鬥者靈魂集氣陣
         </h1>
         <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto mb-6">
-          鍾智凡！你的專屬《時光決鬥盤卡冊》與最終生日禮物已被強大結界封印，必須集滿 <strong class="text-amber-300">10 個決鬥者靈魂</strong> 才能破除封印！
+          鍾智凡！你的生日禮物已被強大結界封印，必須集滿 <strong class="text-amber-300">10 個決鬥者靈魂</strong> 才能破除封印！
         </p>
 
         <!-- 靈魂能量球與進度數字 -->
@@ -931,7 +931,7 @@
       document.getElementById('soulCurrentCount').textContent = count;
       document.getElementById('soulProgressBar').style.width = `${percent}%`;
       document.getElementById('soulRemainText').textContent =
-        `還差 ${remain} 位好友的回憶卡就能破除封印、解鎖卡冊與最終禮物！`;
+        `還差 ${remain} 個靈魂就能破除封印、解鎖最終禮物！`;
     }
 
     // 壽星手動重新感應最新靈魂數量
@@ -951,7 +951,7 @@
 
     // 一鍵複製召喚咒文（使用相容 iFrame 與手機的 execCommand 備援）
     function copySummonSpell() {
-      const spellText = `朋友啊！我的生日千年積木正在封印中，需要收集 10 個決鬥者靈魂才能解鎖！快點網址幫我召喚一張專屬回憶卡支持我吧 👉 ${APP_CONFIG.SHARE_LIFF_URL}`;
+      const spellText = `朋友啊！我的生日千年積木正在封印中，需要收集 10 個決鬥者靈魂才能解鎖！快點網址支持我吧 👉 ${APP_CONFIG.SHARE_LIFF_URL}`;
 
       const tempTextarea = document.createElement('textarea');
       tempTextarea.value = spellText;
@@ -970,7 +970,7 @@
       document.body.removeChild(tempTextarea);
 
       if (copied) {
-        showToast('📋', '召喚咒文已複製成功！', '快去貼到 LINE 群組或傳給好朋友，請他們幫你召喚回憶卡集氣吧！');
+        showToast('📋', '召喚咒文已複製成功！', '快去貼到 LINE 群組或傳給好朋友，請他們幫你集氣吧！');
       } else {
         showToast('📜', '請長按下方咒文複製', spellText);
       }
