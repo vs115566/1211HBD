@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>決鬥者的記憶牌組 — 生日專屬召喚</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: 思源宋體、思源黑體 & Cinzel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;700;900&display=swap" rel="stylesheet">
+  <!-- Supabase 官方 JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- LINE LIFF SDK -->
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    :root {
+      --gold-light: #f6e27a;
+      --gold-mid: #d4af37;
+      --gold-dark: #8a6d1c;
+      --bg-obsidian: #0b0d13;
+    }
+
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: var(--bg-obsidian);
+      background-image:
+        radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.16) 0%, transparent 60%),
+        radial-gradient(circle at 15% 85%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+        linear-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(212, 175, 55, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+      color: #f3f4f6;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .font-serif-card {
+      font-family: 'Noto Serif TC', serif;
+    }
+
+    .font-cinzel {
+      font-family: 'Cinzel', serif;
+    }
+
+    .text-gold-gradient {
+      background: linear-gradient(180deg, #fff3b0 0%, #d4af37 55%, #997315 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* 遊戲王實體卡比例與質感 */
+    .ygo-card {
+      width: 100%;
+      max-width: 340px;
+      aspect-ratio: 59 / 86;
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 22px 48px rgba(0, 0, 0, 0.88), 0 0 24px rgba(212, 175, 55, 0.28);
+      border: 6px solid #2b2d38;
+      position: relative;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      user-select: none;
+    }
+
+    /* 各種遊戲王卡框金屬紋理 */
+    .card-type-monster {
+      background: linear-gradient(135deg, #c98a3c 0%, #b57328 35%, #d69849 70%, #9e5f1a 100%);
+    }
+    .card-type-normal {
+      background: linear-gradient(135deg, #d8b85c 0%, #c4a142 35%, #e5c66b 70%, #a8862c 100%);
+    }
+    .card-type-magic {
+      background: linear-gradient(135deg, #1d8a73 0%, #136f5c 35%, #269c83 70%, #0f5949 100%);
+    }
+    .card-type-trap {
+      background: linear-gradient(135deg, #9c2b68 0%, #7d1e51 35%, #b3367a 70%, #63143e 100%);
+    }
+    .card-type-fusion {
+      background: linear-gradient(135deg, #884ea0 0%, #6c3483 35%, #9b59b6 70%, #512e5f 100%);
+    }
+    .card-type-synchro {
+      background: linear-gradient(135deg, #e5e7eb 0%, #cbd5e1 35%, #f8fafc 70%, #94a3b8 100%);
+    }
+
+    .ygo-inner-bevel {
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-right-color: rgba(0, 0, 0, 0.45);
+      border-bottom-color: rgba(0, 0, 0, 0.45);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 6px 8px;
+      position: relative;
+      background-image: repeating-linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.03) 0px,
+        rgba(255, 255, 255, 0.03) 2px,
+        transparent 2px,
+        transparent 6px
+      );
+    }
+
+    .ygo-header {
+      border: 1.5px solid rgba(0, 0, 0, 0.55);
+      border-top-color: rgba(255, 255, 255, 0.45);
+      border-left-color: rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.16);
+      padding: 3px 7px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25);
+    }
+
+    .ygo-attr {
+      width: 22px;
+      height: 22px;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+      box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.6);
+      flex-shrink: 0;
+    }
+    .attr-light  { background: radial-gradient(circle at 30% 30%, #fff394, #d4a017); }
+    .attr-earth  { background: radial-gradient(circle at 30% 30%, #d97706, #78350f); }
+    .attr-magic  { background: radial-gradient(circle at 30% 30%, #6ee7b7, #059669); }
+    .attr-trap   { background: radial-gradient(circle at 30% 30%, #f472b6, #be185d); }
+    .attr-dark   { background: radial-gradient(circle at 30% 30%, #c084fc, #581c87); }
+    .attr-wind   { background: radial-gradient(circle at 30% 30%, #7dd3fc, #0284c7); }
+
+    .ygo-star {
+      width: 15px;
+      height: 15px;
+      border-radius: 9999px;
+      background: radial-gradient(circle at 35% 35%, #ff9a3c, #d9381e 70%, #7a1405 100%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+      color: #ffe866;
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    .ygo-art-frame {
+      margin: 4px 6px;
+      aspect-ratio: 1 / 1;
+      border: 3px solid #3c3e4a;
+      box-shadow:
+        inset 0 0 8px rgba(0, 0, 0, 0.8),
+        0 2px 4px rgba(0, 0, 0, 0.6);
+      position: relative;
+      overflow: hidden;
+      background-color: #181920;
+    }
+
+    .ygo-holo-sheen {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        115deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.25) 45%,
+        rgba(255, 215, 0, 0.22) 50%,
+        transparent 75%
+      );
+      pointer-events: none;
+      mix-blend-mode: screen;
+      transition: opacity 0.3s ease;
+    }
+
+    .ygo-lore-box {
+      flex: 1;
+      margin-top: 2px;
+      background: rgba(244, 236, 218, 0.94);
+      border: 2px solid #7c5828;
+      padding: 5px 7px;
+      color: #1a1612;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+
+    .ygo-foil-stamp {
+      width: 12px;
+      height: 12px;
+      background: linear-gradient(135deg, #fff6b3 0%, #d4af37 50%, #806000 100%);
+      border: 1px solid rgba(0, 0, 0, 0.4);
+      box-shadow: 0 0 4px rgba(255, 215, 0, 0.8);
+    }
+
+    /* 3D 翻卡動畫 */
+    .flip-scene {
+      perspective: 1200px;
+    }
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+      transform-style: preserve-3d;
+    }
+    .flip-card-inner.is-flipped {
+      transform: rotateY(180deg);
+    }
+    .flip-face {
+      width: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .flip-face-back {
+      position: absolute;
+      inset: 0;
+      transform: rotateY(180deg);
+    }
+
+    /* 遊戲王經典卡背 + 暗金羊皮紙真心話區 */
+    .ygo-card-back {
+      width: 100%;
+      max-width: 340px;
+      aspect-ratio: 59 / 86;
+      border-radius: 12px;
+      border: 6px solid #2b2d38;
+      background: radial-gradient(ellipse at center, #3b1e0e 0%, #1c0d06 65%, #0d0603 100%);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85), 0 0 25px rgba(212, 175, 55, 0.35);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+    .ygo-card-back::before {
+      content: '';
+      position: absolute;
+      inset: 18px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, #050507 40%, #5c2e14 68%, transparent 72%);
+      border: 2px solid rgba(212, 175, 55, 0.3);
+      pointer-events: none;
+    }
+
+    @keyframes summonFlash {
+      0% { opacity: 0; transform: scale(0.86); filter: brightness(2.2); }
+      60% { opacity: 1; transform: scale(1.03); filter: brightness(1.25); }
+      100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+    }
+    .animate-summon {
+      animation: summonFlash 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.5)); }
+      50% { transform: scale(1.06); filter: drop-shadow(0 0 26px rgba(246, 226, 122, 0.9)); }
+    }
+    .animate-puzzle {
+      animation: pulseGlow 2.2s infinite ease-in-out;
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="antialiased selection:bg-amber-500/30 selection:text-amber-200">
+
+  <!-- =====================================================================
+       【正式上線核心設定區】已填入你的專屬金鑰、LIFF ID 與壽星 LINE UID
+       ===================================================================== -->
+  <script>
+    const APP_CONFIG = {
+      SUPABASE_URL: 'https://olmklmqdjdfdjbvaiart.supabase.co',
+      SUPABASE_KEY: 'sb_publishable_BKAnNxHgwvLlKuvBuNo6Fg_pcsHAyjI',
+      SUPABASE_TABLE: 'birthday_cards',
+      SUPABASE_BUCKET: 'card-photos',
+
+      TARGET_BIRTHDAY_UID: 'Ucc5acda924f31a5fbbd58f6c1babd614',
+      LIFF_ID: '2012601846-pQrdmBgi',
+
+      CURRENT_YEAR: 2026
+    };
+  </script>
+
+  <!-- 千年積木靈魂波長感應載入畫面 -->
+  <div id="duelistLoadingOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0b0d13] transition-opacity duration-500">
+    <div class="animate-puzzle mb-5">
+      <!-- 千年積木 SVG 圖騰 -->
+      <svg class="w-24 h-24 text-amber-400" viewBox="0 0 100 100" fill="none">
+        <circle cx="50" cy="14" r="7" stroke="currentColor" stroke-width="3.5" />
+        <polygon points="15,24 85,24 50,88" fill="url(#goldGrad)" stroke="#fff3b0" stroke-width="2.5" />
+        <circle cx="50" cy="46" r="9" fill="#0b0d13" stroke="#f6e27a" stroke-width="2" />
+        <path d="M43 46 Q50 39 57 46 Q50 53 43 46 Z" fill="#f6e27a" />
+        <line x1="32" y1="24" x2="50" y2="58" stroke="#78350f" stroke-width="1.5" />
+        <line x1="68" y1="24" x2="50" y2="58" stroke="#78350f" stroke-width="1.5" />
+        <line x1="25" y1="42" x2="75" y2="42" stroke="#78350f" stroke-width="1.5" />
+        <defs>
+          <linearGradient id="goldGrad" x1="15" y1="24" x2="85" y2="88" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#fff3b0" />
+            <stop offset="50%" stop-color="#d4af37" />
+            <stop offset="100%" stop-color="#8a6d1c" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <p class="font-serif-card font-bold text-base sm:text-lg text-gold-gradient tracking-widest animate-pulse">
+      正在感應決鬥者靈魂波長...
+    </p>
+    <p id="loadingSubtext" class="text-[11px] text-slate-400 mt-1.5 tracking-wider">
+      Connecting to LINE Duel Disk &amp; Cloud Archive
+    </p>
+  </div>
+
+  <!-- 右上角極簡狀態膠囊（僅顯示雲端連線狀態與鑰匙孔手動備援鎖） -->
+  <div id="topStatusCapsule" class="fixed top-3 right-3 z-40 flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-amber-500/40 shadow-xl">
+    <span id="cloudStatusPill" class="text-[11px] font-bold px-1.5 py-0.5 rounded-full text-amber-300 whitespace-nowrap">
+      ⏳ 連線檢查中...
+    </span>
+    <div class="h-3.5 w-[1px] bg-slate-700"></div>
+    <button onclick="openKeyholeModal()" title="決鬥者通行驗證" class="p-1 rounded-full hover:bg-amber-500/20 text-amber-300 transition active:scale-90">
+      🔑
+    </button>
+  </div>
+
+  <!-- 主舞台容器 -->
+  <main class="max-w-4xl mx-auto px-4 pt-14 pb-16">
+
+    <!-- =====================================================================
+         視角 A：外部好友（回憶卡片鑄造廠）
+         ===================================================================== -->
+    <section id="viewFriend" class="hidden space-y-6">
+      <header class="text-center space-y-2 max-w-xl mx-auto">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-400/30 text-amber-300 text-[11px] font-bold">
+          <span>🃏 決鬥者生日秘密企劃</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black font-serif-card text-gold-gradient tracking-wide">
+          回憶卡片鑄造廠
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          為壽星打造一張專屬的<strong class="text-amber-300">《遊戲王回憶卡》</strong>！填寫你們的合照與故事，卡片將自動封印進他的生日決鬥盤卡冊中。
+        </p>
+      </header>
+
+      <!-- 桌機雙欄 / 手機上下排版 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- 表單區塊 -->
+        <form id="friendCardForm" class="lg:col-span-7 bg-slate-900/85 border border-amber-500/25 rounded-2xl p-4 sm:p-6 space-y-4 shadow-2xl backdrop-blur-sm">
+          <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h2 class="text-base font-bold text-amber-300">✍️ 注入你的靈魂記憶</h2>
+            <span class="text-[11px] text-slate-400">照片自動壓縮優化</span>
+          </div>
+
+          <!-- 1. 好友暱稱 / 稱號 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1.5">
+              1. 好友暱稱 / 稱號（卡片名稱）<span class="text-rose-400">*</span>
+            </label>
+            <input type="text" id="inputName" maxlength="16" required placeholder="例如：大學宿營神隊友、永遠的酒肉朋友"
+              class="w-full bg-slate-950/90 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition" />
+          </div>
+
+          <!-- 2. 認識年份 & 3. 卡片屬性/種類 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">
+                2. 認識年份（決定等級星數）<span class="text-rose-400">*</span>
+              </label>
+              <select id="inputYear" class="w-full bg-slate-950/90 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none transition">
+                <!-- JS 動態產生 2005 ~ 2026 -->
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">
+                3. 卡片屬性 / 種類
+              </label>
+              <select id="inputCardType" class="w-full bg-slate-950/90 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none transition">
+                <option value="monster">🟧 效果怪獸（熱血 / 出遊合照）</option>
+                <option value="normal">🟨 通常怪獸（經典 / 傳說老友）</option>
+                <option value="magic">🟩 魔法卡（搞笑 / 日常幹話）</option>
+                <option value="trap">🟪 陷阱卡（黑歷史 / 醜照突襲）</option>
+                <option value="fusion">🟣 融合怪獸（最強拍檔 / 默契組合）</option>
+                <option value="synchro">⬜ 同步怪獸（跨界 / 奇蹟相遇）</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 4. 合照上傳 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1.5">
+              4. 上傳與壽星的合照<span class="text-rose-400">*</span>
+            </label>
+            <label for="inputPhoto" class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-amber-500/40 hover:border-amber-400 rounded-xl cursor-pointer bg-slate-950/60 hover:bg-slate-950 transition p-3 text-center">
+              <svg class="w-7 h-7 text-amber-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              <span id="photoFileName" class="text-xs text-amber-200 font-medium">點擊選擇手機相簿照片（自動壓縮至 ~150KB）</span>
+              <span class="text-[10px] text-slate-400 mt-0.5">支援 JPG / PNG / HEIC，自動縮放為清晰卡圖</span>
+            </label>
+            <input type="file" id="inputPhoto" accept="image/*" class="hidden" />
+          </div>
+
+          <!-- 5. 卡片效果說明 -->
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label class="text-xs font-bold text-slate-300">
+                5. 卡片效果說明（印在正面效果欄）<span class="text-rose-400">*</span>
+              </label>
+              <span id="descCharCount" class="text-[11px] text-slate-400">0 / 75 字</span>
+            </div>
+            <textarea id="inputPhotoDesc" rows="2" maxlength="75" required
+              placeholder="例如：【特殊召喚】每當週末夜晚發動，雙方強制進入居酒屋模式，直到天亮前不會結束回合！"
+              class="w-full bg-slate-950/90 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 outline-none transition resize-none"></textarea>
+          </div>
+
+          <!-- 6. 給壽星的真心話 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1.5">
+              6. 給壽星的真心話（藏在卡背，點擊翻面後顯示）<span class="text-rose-400">*</span>
+            </label>
+            <textarea id="inputWish" rows="4" required
+              placeholder="寫下你想對他說的真心話或生日祝福（這段話會封印在暗金羊皮紙卡背等他親自翻開！）"
+              class="w-full bg-slate-950/90 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition"></textarea>
+          </div>
+
+          <!-- 送出按鈕 -->
+          <button type="submit" id="btnSubmitCard"
+            class="w-full py-3.5 px-6 rounded-xl font-black text-base text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 hover:from-amber-200 hover:to-yellow-400 shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+            <span id="btnSubmitText">✨ 封印記憶並傳送進壽星牌組 ✨</span>
+          </button>
+        </form>
+
+        <!-- 即時卡片預覽 -->
+        <div class="lg:col-span-5 flex flex-col items-center lg:sticky lg:top-16">
+          <div class="text-[11px] text-amber-400/90 font-medium mb-2.5 flex items-center gap-1.5">
+            <span>⚡ 即時卡面預覽（認識越久，等級星數越高！）</span>
+          </div>
+
+          <div id="previewCardWrapper" class="ygo-card card-type-monster">
+            <div class="ygo-inner-bevel">
+              <div class="ygo-header">
+                <span id="prevName" class="font-serif-card font-black text-base text-slate-900 truncate pr-2 tracking-tight">
+                  你的決鬥者暱稱
+                </span>
+                <div id="prevAttr" class="ygo-attr attr-light">光</div>
+              </div>
+
+              <div id="prevStars" class="flex items-center justify-end gap-0.5 px-1.5 py-1 min-h-[23px]"></div>
+
+              <div class="ygo-art-frame">
+                <img id="prevPhoto" src="https://placehold.co/400x400/1e2230/d4af37?text=%E8%AB%8B%E4%B8%8A%E5%82%B3%E5%9B%9E%E6%86%B6%E5%90%88%E7%85%A7" alt="回憶卡圖" class="w-full h-full object-cover" />
+                <div class="ygo-holo-sheen"></div>
+              </div>
+
+              <div class="flex justify-between items-center px-2 py-0.5 text-[9px] font-bold text-slate-900/80 tracking-wider">
+                <span>1st Edition</span>
+                <span id="prevSetId">BDAY-2020</span>
+              </div>
+
+              <div class="ygo-lore-box">
+                <div>
+                  <div id="prevTypeTitle" class="font-serif-card font-black text-[11px] leading-tight mb-0.5">
+                    【效果怪獸／回憶效果】
+                  </div>
+                  <p id="prevPhotoDesc" class="text-[10.5px] leading-snug text-slate-800 break-words line-clamp-4">
+                    【特殊召喚】每當週末夜晚發動，雙方強制進入居酒屋模式，直到天亮前不會結束回合！
+                  </p>
+                </div>
+                <div class="border-t border-amber-900/30 pt-0.5 mt-1 flex justify-between items-center text-[10px] font-black font-cinzel text-slate-900">
+                  <span>BOND / MEMORY</span>
+                  <span id="prevAtkDef">ATK/2020 DEF/1200</span>
+                </div>
+              </div>
+
+              <div class="flex justify-between items-center px-1 pt-1 text-[8px] text-slate-900/75 font-bold">
+                <span>©DUELIST BIRTHDAY DECK</span>
+                <div class="ygo-foil-stamp"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- =====================================================================
+         視角 B：壽星本人（決鬥者時光卡冊）
+         ===================================================================== -->
+    <section id="viewBirthday" class="hidden max-w-xl mx-auto space-y-5">
+      <header class="text-center space-y-1.5">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 text-xs font-bold">
+          <span>👑 決鬥者靈魂波長驗證通過</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black font-serif-card text-gold-gradient">
+          決鬥者時光卡冊
+        </h1>
+        <p class="text-xs text-slate-300">
+          目前檢視 <strong id="totalDeckCount" class="text-amber-300 text-sm">0</strong> 張記憶卡片 ｜ 左右滑動抽牌・點擊卡片翻面看真心話
+        </p>
+      </header>
+
+      <!-- 年份時間軸篩選膠囊 -->
+      <div class="bg-slate-900/80 border border-amber-500/25 rounded-2xl p-2.5 backdrop-blur-sm">
+        <div class="text-[10px] text-slate-400 text-center mb-1.5 font-medium tracking-wider">
+          ⏳ 時光年份篩選（依認識年份由早至今排列）
+        </div>
+        <div id="yearTimelineBar" class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-1 justify-start sm:justify-center">
+          <!-- JS 動態生成年份篩選膠囊 -->
+        </div>
+      </div>
+
+      <!-- 卡片左右滑動舞台 -->
+      <div id="carouselTouchArea" class="relative flex flex-col items-center justify-center py-1">
+        <div class="w-full max-w-[340px] flex items-center justify-between mb-2.5 px-1">
+          <span id="currentCardYearBadge" class="px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-cinzel font-black text-sm">
+            2016 年相識
+          </span>
+          <span id="currentCardIndexBadge" class="text-xs font-bold text-slate-400">
+            第 1 / 1 張
+          </span>
+        </div>
+
+        <!-- 3D 可翻轉卡片 -->
+        <div class="flip-scene w-full max-w-[340px] cursor-pointer group" onclick="toggleFlipCurrentCard()">
+          <div id="activeFlipInner" class="flip-card-inner">
+            <!-- 正面：遊戲王卡 -->
+            <div class="flip-face">
+              <div id="bdayCardFrame" class="ygo-card card-type-monster">
+                <div class="ygo-inner-bevel">
+                  <div class="ygo-header">
+                    <span id="bdayCardName" class="font-serif-card font-black text-base text-slate-900 truncate pr-2">
+                      好友暱稱
+                    </span>
+                    <div id="bdayCardAttr" class="ygo-attr attr-light">光</div>
+                  </div>
+
+                  <div id="bdayCardStars" class="flex items-center justify-end gap-0.5 px-1.5 py-1 min-h-[23px]"></div>
+
+                  <div class="ygo-art-frame">
+                    <img id="bdayCardPhoto" src="" alt="回憶合照" class="w-full h-full object-cover" />
+                    <div class="ygo-holo-sheen group-hover:opacity-100 opacity-75"></div>
+                  </div>
+
+                  <div class="flex justify-between items-center px-2 py-0.5 text-[9px] font-bold text-slate-900/80 tracking-wider">
+                    <span>1st Edition</span>
+                    <span id="bdayCardSetId">BDAY-2016</span>
+                  </div>
+
+                  <div class="ygo-lore-box">
+                    <div>
+                      <div id="bdayCardTypeTitle" class="font-serif-card font-black text-[11px] leading-tight mb-0.5">
+                        【效果怪獸／回憶效果】
+                      </div>
+                      <p id="bdayCardDesc" class="text-[10.5px] leading-snug text-slate-800 break-words">
+                        卡片效果說明
+                      </p>
+                    </div>
+                    <div class="border-t border-amber-900/30 pt-0.5 mt-1 flex justify-between items-center text-[10px] font-black font-cinzel text-slate-900">
+                      <span>BOND / MEMORY</span>
+                      <span id="bdayCardAtkDef">ATK/2016 DEF/1200</span>
+                    </div>
+                  </div>
+
+                  <div class="flex justify-between items-center px-1 pt-1 text-[8px] text-slate-900/75 font-bold">
+                    <span>©DUELIST BIRTHDAY DECK</span>
+                    <div class="ygo-foil-stamp"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 背面：暗金羊皮紙真心話卷軸 -->
+            <div class="flip-face flip-face-back">
+              <div class="ygo-card-back">
+                <div class="relative z-10 text-center border-b border-amber-500/30 pb-2.5">
+                  <span class="text-[10px] tracking-widest text-amber-400/80 uppercase font-cinzel">Secret Parchment</span>
+                  <h3 id="bdayBackSender" class="text-lg font-black font-serif-card text-amber-200 mt-0.5">
+                    來自 好友 的真心話
+                  </h3>
+                  <p id="bdayBackYear" class="text-[11px] text-amber-400/80">
+                    結識於 2016 年
+                  </p>
+                </div>
+
+                <!-- 羊皮紙捲軸內文區 -->
+                <div class="relative z-10 flex-1 my-3 bg-[#1c150c]/95 border border-amber-500/40 rounded-xl p-4 overflow-y-auto shadow-inner">
+                  <p id="bdayBackWish" class="text-sm text-amber-100 leading-relaxed whitespace-pre-line font-medium">
+                    生日快樂！
+                  </p>
+                </div>
+
+                <div class="relative z-10 text-center">
+                  <span class="inline-block px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-[11px] text-amber-200 font-bold">
+                    ↻ 點擊卡片翻回正面卡圖
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部左右抽牌按鈕 -->
+        <div class="w-full max-w-[340px] flex items-center justify-between gap-3 mt-5">
+          <button onclick="prevCard()" class="flex-1 py-3 px-4 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/30 text-amber-200 font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition shadow-lg">
+            <span>◀ 上一張</span>
+          </button>
+
+          <button onclick="toggleFlipCurrentCard()" class="py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/20 active:scale-95 transition">
+            🔄 翻面看真心話
+          </button>
+
+          <button onclick="nextCard()" class="flex-1 py-3 px-4 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/30 text-amber-200 font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition shadow-lg">
+            <span>下一張 ▶</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 手動驗證鑰匙孔彈窗（備援通行證輸入） -->
+  <div id="keyholeModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border-2 border-amber-400/50 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-summon">
+      <div class="text-center space-y-1">
+        <div class="text-3xl">🔑</div>
+        <h3 class="text-base font-black text-amber-300 font-serif-card">決鬥者專屬通行驗證</h3>
+        <p class="text-xs text-slate-400">若從外部瀏覽器開啟，可輸入壽星 LINE UID 解鎖卡冊</p>
+      </div>
+      <input type="text" id="manualUidInput" placeholder="請輸入 LINE User ID (U...)"
+        class="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono outline-none" />
+      <div class="flex gap-2">
+        <button onclick="closeKeyholeModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition">
+          取消
+        </button>
+        <button onclick="verifyManualUid()" class="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition">
+          驗證解鎖
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自訂通知彈窗（取代 alert） -->
+  <div id="toastModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border-2 border-amber-400/60 rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl animate-summon">
+      <div id="toastIcon" class="text-4xl">✨</div>
+      <h3 id="toastTitle" class="text-lg font-black text-amber-300 font-serif-card">卡片召喚成功！</h3>
+      <p id="toastMessage" class="text-xs sm:text-sm text-slate-300 leading-relaxed"></p>
+      <button onclick="closeToastModal()" class="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm transition">
+        太棒了！
+      </button>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       核心程式邏輯：LINE LIFF 登入驗證、Supabase 雲端同步、Canvas 壓縮與 3D 翻卡
+       ===================================================================== -->
+  <script>
+    const FALLBACK_SAMPLE_CARDS = [
+      {
+        id: 'sample-1',
+        nickname: '宿營同組戰友阿哲',
+        year: 2016,
+        card_type: 'monster',
+        image_url: 'https://placehold.co/400x400/2a1f14/f6e27a?text=2016+%E5%88%9D%E7%9B%B8%E8%AD%98%E5%90%88%E7%85%A7',
+        photo_desc: '【效果怪獸】2016年新生訓練發動此卡。當雙方都不知道教室在哪時，可特殊召喚出一起翹課吃宵夜的羈絆。',
+        message: '轉眼間居然認識十年了！還記得剛認識時我們兩個傻傻走錯棟，結果直接變最鐵的兄弟。祝你今年生日快樂，事業跟抽卡運一樣歐氣爆棚！'
+      },
+      {
+        id: 'sample-2',
+        nickname: '夜衝環島車神小宇',
+        year: 2019,
+        card_type: 'magic',
+        image_url: 'https://placehold.co/400x400/102b26/6ee7b7?text=2019+%E7%92%B0%E5%B3%B6%E7%86%B1%E8%A1%80%E7%85%A7',
+        photo_desc: '【速攻魔法】2019年深夜於蘇花公路發動。將手牌中的「睡意」全部送入墓地，直到看見太平洋日出為止！',
+        message: '那年說走就走的環島真的是一輩子的回憶，雖然騎到屁股快裂開，但有你在路上講幹話完全不會累。生日快樂，下次再一起衝一波！'
+      },
+      {
+        id: 'sample-3',
+        nickname: 'KTV麥霸黑歷史捕手',
+        year: 2022,
+        card_type: 'trap',
+        image_url: 'https://placehold.co/400x400/2e1222/f472b6?text=2022+%E5%96%9D%E9%86%89%E9%BB%91%E6%AD%B7%E5%8F%B2',
+        photo_desc: '【反擊陷阱】當壽星宣稱「我今天絕對不會醉」時才能發動！直接將他灌倒在包廂沙發上並拍下這張傳世醜照。',
+        message: '哈哈哈哈看到這張照片有沒有想起那天是誰扛你回家的？謝謝你每次聚會都當大家的開心果，祝你新的一歲平安健康、天天開心！'
+      }
+    ];
+
+    let supabaseClient = null;
+    let isCloudConnected = false;
+    let allCards = [];
+    let filteredCards = [];
+    let selectedYearFilter = 'ALL';
+    let currentCardIndex = 0;
+    let uploadedPhotoDataUrl = '';
+    let uploadedPhotoBlob = null;
+    let isCardFlipped = false;
+
+    const CARD_TYPE_META = {
+      monster: {
+        frameClass: 'card-type-monster',
+        attrClass: 'attr-light',
+        attrText: '光',
+        typeTitle: '【效果怪獸／回憶效果】'
+      },
+      normal: {
+        frameClass: 'card-type-normal',
+        attrClass: 'attr-earth',
+        attrText: '地',
+        typeTitle: '【通常怪獸／傳說羈絆】'
+      },
+      magic: {
+        frameClass: 'card-type-magic',
+        attrClass: 'attr-magic',
+        attrText: '魔',
+        typeTitle: '【魔法卡／日常回憶】'
+      },
+      trap: {
+        frameClass: 'card-type-trap',
+        attrClass: 'attr-trap',
+        attrText: '陷',
+        typeTitle: '【陷阱卡／黑歷史突襲】'
+      },
+      fusion: {
+        frameClass: 'card-type-fusion',
+        attrClass: 'attr-dark',
+        attrText: '闇',
+        typeTitle: '【融合怪獸／最強拍檔】'
+      },
+      synchro: {
+        frameClass: 'card-type-synchro',
+        attrClass: 'attr-wind',
+        attrText: '風',
+        typeTitle: '【同步怪獸／奇蹟相遇】'
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      populateYearSelect();
+      bindFormLivePreview();
+      bindSwipeGestures();
+
+      // 1. 連線 Supabase 雲端資料庫
+      await initSupabaseAndFetchCards();
+
+      // 2. 執行 LINE LIFF 與 UID 身份辨識路由
+      const detectedUid = await detectUserIdentity();
+      routeByUid(detectedUid);
+
+      // 3. 淡出千年積木載入遮罩
+      hideLoadingOverlay();
+    });
+
+    function hideLoadingOverlay() {
+      const overlay = document.getElementById('duelistLoadingOverlay');
+      if (!overlay) return;
+      overlay.classList.add('opacity-0');
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+      }, 500);
+    }
+
+    // 初始化 Supabase 並撈取資料
+    async function initSupabaseAndFetchCards() {
+      const pill = document.getElementById('cloudStatusPill');
+      try {
+        supabaseClient = window.supabase.createClient(
+          APP_CONFIG.SUPABASE_URL,
+          APP_CONFIG.SUPABASE_KEY
+        );
+
+        const { data, error } = await supabaseClient
+          .from(APP_CONFIG.SUPABASE_TABLE)
+          .select('*')
+          .order('year', { ascending: true });
+
+        if (error) throw error;
+
+        isCloudConnected = true;
+        pill.textContent = '☁️ 雲端同步連線中';
+        pill.className = 'text-[11px] font-bold px-1.5 py-0.5 rounded-full text-emerald-300 whitespace-nowrap';
+
+        if (data && data.length > 0) {
+          allCards = data;
+        } else {
+          // 資料庫剛建好尚無卡片時，暫時顯示內建範例卡避免空畫面
+          allCards = [...FALLBACK_SAMPLE_CARDS];
+        }
+      } catch (err) {
+        console.warn('雲端資料表連線異常，啟用本機備援預覽：', err.message);
+        isCloudConnected = false;
+        pill.textContent = '💾 本機備援模式';
+        pill.className = 'text-[11px] font-bold px-1.5 py-0.5 rounded-full text-amber-300 whitespace-nowrap';
+        allCards = [...FALLBACK_SAMPLE_CARDS];
+      }
+    }
+
+    // 偵測使用者 LINE UID（LIFF 自動登入 > 網址 ?uid= > 本機暫存通行證）
+    async function detectUserIdentity() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryUid = urlParams.get('uid');
+      if (queryUid) {
+        localStorage.setItem('ygo_verified_uid', queryUid.trim());
+        return queryUid.trim();
+      }
+
+      const cachedUid = localStorage.getItem('ygo_verified_uid');
+      if (cachedUid === APP_CONFIG.TARGET_BIRTHDAY_UID) {
+        return cachedUid;
+      }
+
+      // LINE LIFF 初始化與登入驗證
+      if (APP_CONFIG.LIFF_ID && typeof liff !== 'undefined') {
+        try {
+          await liff.init({ liffId: APP_CONFIG.LIFF_ID });
+
+          if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            if (profile && profile.userId) {
+              localStorage.setItem('ygo_verified_uid', profile.userId);
+              return profile.userId;
+            }
+          } else {
+            // 若在 LINE App 內或正式網域（非本地 file:// 或沙盒預覽），自動喚起 LINE 登入
+            const isRealWebHost = window.location.protocol.startsWith('http') &&
+                                  !window.location.hostname.includes('localhost') &&
+                                  !window.location.hostname.includes('127.0.0.1') &&
+                                  window.self === window.top;
+            if (liff.isInClient() || isRealWebHost) {
+              liff.login({ redirectUri: window.location.href });
+              return null;
+            }
+          }
+        } catch (err) {
+          console.warn('LIFF 初始化略過（目前可能位於非 LIFF 網域或預覽環境）：', err.message);
+        }
+      }
+
+      return cachedUid || '';
+    }
+
+    // 雙視角權限分流
+    async function routeByUid(uid) {
+      const viewFriend = document.getElementById('viewFriend');
+      const viewBirthday = document.getElementById('viewBirthday');
+
+      if (uid === APP_CONFIG.TARGET_BIRTHDAY_UID) {
+        viewFriend.classList.add('hidden');
+        viewBirthday.classList.remove('hidden');
+        await initSupabaseAndFetchCards();
+        applyYearFilter('ALL');
+      } else {
+        viewBirthday.classList.add('hidden');
+        viewFriend.classList.remove('hidden');
+        updateLivePreview();
+      }
+    }
+
+    // 手動鑰匙孔驗證彈窗
+    function openKeyholeModal() {
+      const modal = document.getElementById('keyholeModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeKeyholeModal() {
+      const modal = document.getElementById('keyholeModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function verifyManualUid() {
+      const val = document.getElementById('manualUidInput').value.trim();
+      if (!val) return;
+      closeKeyholeModal();
+
+      if (val === APP_CONFIG.TARGET_BIRTHDAY_UID) {
+        localStorage.setItem('ygo_verified_uid', val);
+        await routeByUid(val);
+        showToast('👑', '決鬥者身分驗證成功！', '歡迎回來！已為你展開專屬的《決鬥者時光卡冊》。');
+      } else {
+        showToast('🔒', '通行碼不符', '這組 UID 並非本次生日企劃的壽星本人喔！');
+      }
+    }
+
+    // 產生 2005 ~ 2026 年份選項
+    function populateYearSelect() {
+      const select = document.getElementById('inputYear');
+      select.innerHTML = '';
+      for (let y = APP_CONFIG.CURRENT_YEAR; y >= 2005; y--) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        const stars = calculateStars(y);
+        opt.textContent = `${y} 年認識（★ ${stars} 星等級）`;
+        if (y === 2020) opt.selected = true;
+        select.appendChild(opt);
+      }
+    }
+
+    function calculateStars(year) {
+      const diff = APP_CONFIG.CURRENT_YEAR - Number(year) + 1;
+      return Math.min(12, Math.max(1, diff));
+    }
+
+    function renderStarsHTML(count) {
+      let html = '';
+      for (let i = 0; i < count; i++) {
+        html += `<span class="ygo-star">★</span>`;
+      }
+      return html;
+    }
+
+    // =========================================================================
+    // 視角 A：表單即時預覽、Canvas 圖片壓縮 (max 800px, quality 0.8) 與雲端上傳
+    // =========================================================================
+    function bindFormLivePreview() {
+      const inputName = document.getElementById('inputName');
+      const inputYear = document.getElementById('inputYear');
+      const inputCardType = document.getElementById('inputCardType');
+      const inputPhotoDesc = document.getElementById('inputPhotoDesc');
+      const inputPhoto = document.getElementById('inputPhoto');
+      const form = document.getElementById('friendCardForm');
+
+      inputName.addEventListener('input', updateLivePreview);
+      inputYear.addEventListener('change', updateLivePreview);
+      inputCardType.addEventListener('change', updateLivePreview);
+      inputPhotoDesc.addEventListener('input', () => {
+        document.getElementById('descCharCount').textContent = `${inputPhotoDesc.value.length} / 75 字`;
+        updateLivePreview();
+      });
+
+      inputPhoto.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        document.getElementById('photoFileName').textContent = `已選擇：${file.name}`;
+        compressImageToTargetSize(file, 800, 0.8, (dataUrl, blob) => {
+          uploadedPhotoDataUrl = dataUrl;
+          uploadedPhotoBlob = blob;
+          document.getElementById('prevPhoto').src = dataUrl;
+        });
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const nickname = inputName.value.trim();
+        const year = Number(inputYear.value);
+        const card_type = inputCardType.value;
+        const photo_desc = inputPhotoDesc.value.trim();
+        const message = document.getElementById('inputWish').value.trim();
+
+        if (!uploadedPhotoDataUrl || !uploadedPhotoBlob) {
+          showToast('📸', '還差一張回憶合照！', '請點擊上方「上傳與壽星的合照」，這張照片會印在遊戲王卡面上喔！');
+          return;
+        }
+
+        const submitBtn = document.getElementById('btnSubmitCard');
+        const submitText = document.getElementById('btnSubmitText');
+        submitBtn.disabled = true;
+        submitText.textContent = '⏳ 正在封印記憶並上傳至雲端牌組...';
+
+        try {
+          if (!supabaseClient) {
+            throw new Error('雲端用戶端尚未初始化');
+          }
+
+          const fileName = `card_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.jpg`;
+
+          // 1. 上傳壓縮後照片至 Supabase Storage ('card-photos')
+          const { error: uploadError } = await supabaseClient.storage
+            .from(APP_CONFIG.SUPABASE_BUCKET)
+            .upload(fileName, uploadedPhotoBlob, { contentType: 'image/jpeg' });
+
+          if (uploadError) throw uploadError;
+
+          // 2. 取得公開圖片網址
+          const { data: publicUrlData } = supabaseClient.storage
+            .from(APP_CONFIG.SUPABASE_BUCKET)
+            .getPublicUrl(fileName);
+
+          const image_url = publicUrlData.publicUrl;
+
+          // 3. 寫入資料庫 ('birthday_cards')
+          const { error: insertError } = await supabaseClient
+            .from(APP_CONFIG.SUPABASE_TABLE)
+            .insert([{
+              nickname,
+              year,
+              card_type,
+              photo_desc,
+              message,
+              image_url
+            }]);
+
+          if (insertError) throw insertError;
+
+          form.reset();
+          uploadedPhotoDataUrl = '';
+          uploadedPhotoBlob = null;
+          document.getElementById('prevPhoto').src = 'https://placehold.co/400x400/1e2230/d4af37?text=%E5%B7%B2%E6%88%90%E5%8A%9F%E5%B0%81%E5%8D%B0%EF%BC%81';
+          document.getElementById('photoFileName').textContent = '點擊選擇手機相簿照片（自動壓縮至 ~150KB）';
+          document.getElementById('descCharCount').textContent = '0 / 75 字';
+          populateYearSelect();
+          updateLivePreview();
+
+          showToast(
+            '🃏',
+            '記憶卡片封印成功！',
+            `感謝「${nickname}」！你的專屬回憶卡（★ ${calculateStars(year)} 星）已經成功同步至雲端，等待壽星在生日當天親自抽卡揭曉！`
+          );
+        } catch (err) {
+          console.error('上傳失敗：', err);
+          showToast('⚠️', '雲端上傳遇到一點狀況', `請稍後再試一次，或確認網路連線正常。（錯誤訊息：${err.message || '連線異常'}）`);
+        } finally {
+          submitBtn.disabled = false;
+          submitText.textContent = '✨ 封印記憶並傳送進壽星牌組 ✨';
+        }
+      });
+    }
+
+    function updateLivePreview() {
+      const name = document.getElementById('inputName').value.trim() || '你的決鬥者暱稱';
+      const year = Number(document.getElementById('inputYear').value) || 2020;
+      const cardType = document.getElementById('inputCardType').value || 'monster';
+      const desc = document.getElementById('inputPhotoDesc').value.trim() || '【特殊召喚】每當週末夜晚發動，雙方強制進入居酒屋模式，直到天亮前不會結束回合！';
+
+      const meta = CARD_TYPE_META[cardType] || CARD_TYPE_META.monster;
+      const stars = calculateStars(year);
+
+      const wrapper = document.getElementById('previewCardWrapper');
+      wrapper.className = `ygo-card ${meta.frameClass}`;
+
+      document.getElementById('prevName').textContent = name;
+      const attrEl = document.getElementById('prevAttr');
+      attrEl.className = `ygo-attr ${meta.attrClass}`;
+      attrEl.textContent = meta.attrText;
+
+      document.getElementById('prevStars').innerHTML = renderStarsHTML(stars);
+      document.getElementById('prevSetId').textContent = `BDAY-${year}`;
+      document.getElementById('prevTypeTitle').textContent = meta.typeTitle;
+      document.getElementById('prevPhotoDesc').textContent = desc;
+      document.getElementById('prevAtkDef').textContent = `ATK/${year} DEF/1200`;
+    }
+
+    // Canvas 前端圖片壓縮器（max width/height 800px, JPEG quality 0.8）
+    function compressImageToTargetSize(file, maxDimension, quality, callback) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let w = img.width;
+          let h = img.height;
+
+          if (w > h && w > maxDimension) {
+            h = Math.round((h * maxDimension) / w);
+            w = maxDimension;
+          } else if (h >= w && h > maxDimension) {
+            w = Math.round((w * maxDimension) / h);
+            h = maxDimension;
+          }
+
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          canvas.toBlob((blob) => {
+            callback(dataUrl, blob);
+          }, 'image/jpeg', quality);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // =========================================================================
+    // 視角 B：壽星決鬥者時光卡冊（年份篩選、左右滑動、3D 翻卡）
+    // =========================================================================
+    function applyYearFilter(yearFilter) {
+      selectedYearFilter = yearFilter;
+      allCards.sort((a, b) => Number(a.year) - Number(b.year));
+
+      if (yearFilter === 'ALL') {
+        filteredCards = [...allCards];
+      } else {
+        filteredCards = allCards.filter(c => String(c.year) === String(yearFilter));
+      }
+
+      currentCardIndex = 0;
+      document.getElementById('totalDeckCount').textContent = filteredCards.length;
+      renderYearTimeline();
+      renderActiveCard(false);
+    }
+
+    function renderYearTimeline() {
+      const bar = document.getElementById('yearTimelineBar');
+      bar.innerHTML = '';
+
+      const uniqueYears = [...new Set(allCards.map(c => Number(c.year)))].sort((a, b) => a - b);
+
+      // 「全部年份」膠囊
+      const allBtn = document.createElement('button');
+      allBtn.className = selectedYearFilter === 'ALL'
+        ? 'px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs shrink-0 shadow-md shadow-amber-500/30 transition-all scale-105'
+        : 'px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 font-bold text-xs shrink-0 border border-slate-700 transition-all';
+      allBtn.textContent = `全部 (${allCards.length})`;
+      allBtn.onclick = () => applyYearFilter('ALL');
+      bar.appendChild(allBtn);
+
+      uniqueYears.forEach((yr) => {
+        const isActive = String(selectedYearFilter) === String(yr);
+        const btn = document.createElement('button');
+        btn.className = isActive
+          ? 'px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs shrink-0 shadow-md shadow-amber-500/30 transition-all scale-105'
+          : 'px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 font-bold text-xs shrink-0 border border-slate-700 transition-all';
+        btn.textContent = `${yr} 年`;
+        btn.onclick = () => applyYearFilter(yr);
+        bar.appendChild(btn);
+      });
+    }
+
+    function renderActiveCard(animate = true) {
+      if (filteredCards.length === 0) return;
+
+      isCardFlipped = false;
+      const flipInner = document.getElementById('activeFlipInner');
+      flipInner.classList.remove('is-flipped');
+
+      const card = filteredCards[currentCardIndex];
+      const meta = CARD_TYPE_META[card.card_type] || CARD_TYPE_META.monster;
+      const stars = calculateStars(card.year);
+
+      document.getElementById('currentCardYearBadge').textContent = `${card.year} 年結識`;
+      document.getElementById('currentCardIndexBadge').textContent = `第 ${currentCardIndex + 1} / ${filteredCards.length} 張`;
+
+      const frame = document.getElementById('bdayCardFrame');
+      frame.className = `ygo-card ${meta.frameClass} ${animate ? 'animate-summon' : ''}`;
+      if (animate) {
+        setTimeout(() => frame.classList.remove('animate-summon'), 700);
+      }
+
+      document.getElementById('bdayCardName').textContent = card.nickname;
+      const attrEl = document.getElementById('bdayCardAttr');
+      attrEl.className = `ygo-attr ${meta.attrClass}`;
+      attrEl.textContent = meta.attrText;
+
+      document.getElementById('bdayCardStars').innerHTML = renderStarsHTML(stars);
+      document.getElementById('bdayCardPhoto').src = card.image_url;
+      document.getElementById('bdayCardSetId').textContent = `BDAY-${card.year}`;
+      document.getElementById('bdayCardTypeTitle').textContent = meta.typeTitle;
+      document.getElementById('bdayCardDesc').textContent = card.photo_desc;
+      document.getElementById('bdayCardAtkDef').textContent = `ATK/${card.year} DEF/1200`;
+
+      document.getElementById('bdayBackSender').textContent = `來自「${card.nickname}」的真心話`;
+      document.getElementById('bdayBackYear').textContent = `結識於 ${card.year} 年（羈絆等級 ★${stars}）`;
+      document.getElementById('bdayBackWish').textContent = card.message;
+    }
+
+    function toggleFlipCurrentCard() {
+      isCardFlipped = !isCardFlipped;
+      const flipInner = document.getElementById('activeFlipInner');
+      if (isCardFlipped) {
+        flipInner.classList.add('is-flipped');
+      } else {
+        flipInner.classList.remove('is-flipped');
+      }
+    }
+
+    function prevCard() {
+      if (filteredCards.length === 0) return;
+      currentCardIndex = (currentCardIndex - 1 + filteredCards.length) % filteredCards.length;
+      renderActiveCard(true);
+    }
+
+    function nextCard() {
+      if (filteredCards.length === 0) return;
+      currentCardIndex = (currentCardIndex + 1) % filteredCards.length;
+      renderActiveCard(true);
+    }
+
+    function bindSwipeGestures() {
+      const area = document.getElementById('carouselTouchArea');
+      let touchStartX = 0;
+      let touchEndX = 0;
+
+      area.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+
+      area.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 45) {
+          if (diff > 0) {
+            nextCard();
+          } else {
+            prevCard();
+          }
+        }
+      }, { passive: true });
+    }
+
+    function showToast(icon, title, message) {
+      document.getElementById('toastIcon').textContent = icon;
+      document.getElementById('toastTitle').textContent = title;
+      document.getElementById('toastMessage').textContent = message;
+      const modal = document.getElementById('toastModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeToastModal() {
+      const modal = document.getElementById('toastModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  </script>
+</body>
+</html>
